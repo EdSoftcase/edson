@@ -1,7 +1,5 @@
 
-/* ... imports ... */
 import React, { useState, useRef, useEffect } from 'react';
-// import { useSearchParams } from 'react-router-dom'; // REMOVED
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Client360 } from '../components/Client360';
@@ -12,12 +10,10 @@ import { fetchAddressByCEP, fetchCoordinates } from '../services/geoService';
 import { CustomFieldRenderer } from '../components/CustomFieldRenderer';
 
 export const Clients: React.FC = () => {
-    /* ... hooks ... */
     const { clients, leads, tickets, invoices, products, addClient, addClientsBulk, removeClient, updateClient, addSystemNotification, customFields } = useData();
     const { currentUser, hasPermission } = useAuth();
-    // const [searchParams, setSearchParams] = useSearchParams(); // REMOVED
+    
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-    /* ... existing refs and state ... */
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
     const [whatsAppMessage, setWhatsAppMessage] = useState('');
@@ -55,17 +51,14 @@ export const Clients: React.FC = () => {
     const [inactiveClients, setInactiveClients] = useState<Client[]>([]);
     const [showInactiveModal, setShowInactiveModal] = useState(false);
 
-    // REMOVED Deep Linking Effect
-
     const handleOpenClient = (client: Client) => {
-        setSelectedClient(client); // Use local state
+        setSelectedClient(client);
     };
 
     const handleCloseClient = () => {
-        setSelectedClient(null); // Use local state
+        setSelectedClient(null);
     };
 
-    /* ... (rest of logic: alerts, filters, handlers) ... */
     useEffect(() => {
         const isSessionChecked = sessionStorage.getItem('nexus_inactive_alert_shown');
         if (isSessionChecked) return;
@@ -80,7 +73,6 @@ export const Clients: React.FC = () => {
         { label: 'Agendar Reunião', text: 'Oi [Nome], gostaria de agendar uma breve conversa sobre a [Empresa]. Qual sua disponibilidade?' },
     ];
 
-    // ... (Filter logic, whatsapp templates, validation helpers - all same as before)
     const filteredClients = clients.filter(c => {
         const matchesGlobal = searchTerm === '' || c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.email.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contractId && c.contractId.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesName = filters.name === '' || c.name.toLowerCase().includes(filters.name.toLowerCase()) || (c.contractId && c.contractId.toLowerCase().includes(filters.name.toLowerCase()));
@@ -92,7 +84,6 @@ export const Clients: React.FC = () => {
         return matchesGlobal && matchesName && matchesUnit && matchesSpots && matchesStatus && matchesValue;
     });
 
-    // --- EXPORT FUNCTION ---
     const handleExportExcel = () => {
         if (filteredClients.length === 0) {
             addSystemNotification("Erro na Exportação", "Nenhum cliente na lista para exportar.", "alert");
@@ -121,8 +112,6 @@ export const Clients: React.FC = () => {
         addSystemNotification("Exportação Concluída", "Arquivo Excel gerado com sucesso.", "success");
     };
 
-    // ... (Remaining handlers: handleCreateClient, handleFileUpload etc. - kept identical)
-    // Minimal re-implementation for context
     const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => { const val = e.target.value; setNewClientForm({ ...newClientForm, email: val }); if (val.length === 0) { setEmailError(null); } else if (!validateEmail(val)) { setEmailError('Formato de e-mail inválido'); } else { setEmailError(''); } };
     const maskPhone = (value: string) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').substring(0, 15);
@@ -132,7 +121,9 @@ export const Clients: React.FC = () => {
     const validateCNPJ = (cnpj: string) => { cnpj = cnpj.replace(/[^\d]+/g, ''); if (cnpj === '') return false; if (cnpj.length !== 14) return false; if (/^(\d)\1+$/.test(cnpj)) return false; return true; };
     const maskCNPJ = (value: string) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').substring(0, 18);
     const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => { const maskedVal = maskCNPJ(e.target.value); setNewClientForm({ ...newClientForm, cnpj: maskedVal }); if (maskedVal.length === 0) { setCnpjError(null); } else if (maskedVal.length < 18) { setCnpjError('CNPJ inválido'); } else { setCnpjError(''); } };
+    
     const handleCreateClient = (e: React.FormEvent) => { e.preventDefault(); if (emailError || (newClientForm.email && !validateEmail(newClientForm.email))) { setEmailError('Por favor, corrija o e-mail antes de salvar.'); return; } if (phoneError || (newClientForm.phone && newClientForm.phone.length < 14)) { setPhoneError('Por favor, insira um telefone válido.'); return; } if (cnpjError || (newClientForm.cnpj && newClientForm.cnpj.length < 14)) { setCnpjError('Por favor, insira um CNPJ válido.'); return; } if (!newClientForm.cep) { setCepError('O CEP é obrigatório para localização geográfica.'); return; } const newClient: Client = { id: `C-${Date.now()}`, name: newClientForm.name, contactPerson: newClientForm.contactPerson, document: newClientForm.cnpj, email: newClientForm.email, phone: newClientForm.phone, segment: newClientForm.segment || 'Geral', since: new Date().toISOString(), status: 'Active', ltv: Number(newClientForm.ltv) || 0, nps: 0, healthScore: 100, onboardingStatus: 'Pending', cep: newClientForm.cep, address: newClientForm.address, latitude: newClientForm.latitude, longitude: newClientForm.longitude, website: newClientForm.website, lastContact: new Date().toISOString(), contractedProducts: newClientForm.contractedProducts, metadata: newClientForm.metadata }; addClient(currentUser, newClient); setIsNewClientModalOpen(false); setNewClientForm({ name: '', contactPerson: '', email: '', phone: '', segment: '', cep: '', address: '', latitude: 0, longitude: 0, website: '', ltv: '', cnpj: '', contractedProducts: [], metadata: {} }); setEmailError(null); setPhoneError(null); setCnpjError(null); setCepError(null); };
+    
     const handleDeleteClick = (e: React.MouseEvent, client: Client) => { e.stopPropagation(); e.preventDefault(); setClientToDelete(client); setDeleteReason(''); setIsDeleteModalOpen(true); };
     
     const handleEditClick = (e: React.MouseEvent, client: Client) => { 
@@ -174,7 +165,6 @@ export const Clients: React.FC = () => {
             metadata: editForm.metadata
         }; 
         updateClient(currentUser, updatedClient); 
-        // addSystemNotification('Cliente Atualizado', `Dados de ${updatedClient.name} foram salvos.`, 'success');
         setIsEditModalOpen(false); 
         setClientToEdit(null); 
     };
@@ -191,7 +181,6 @@ export const Clients: React.FC = () => {
 
     return (
         <div className="p-4 md:p-8 min-h-full flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors relative">
-            {/* Header ... */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Carteira de Clientes</h1>
@@ -210,9 +199,7 @@ export const Clients: React.FC = () => {
                 </div>
             </div>
 
-            {/* Table Area ... */}
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col flex-1 overflow-visible">
-                {/* ... Same content as before ... */}
                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-2.5 text-slate-400" size={20}/>
@@ -229,7 +216,6 @@ export const Clients: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ... Mobile Card View ... */}
                 <div className="block md:hidden p-4 space-y-4">
                     {filteredClients.map(client => {
                         const daysInactive = client.lastContact ? Math.floor((new Date().getTime() - new Date(client.lastContact).getTime()) / (1000 * 3600 * 24)) : 999;
@@ -279,7 +265,6 @@ export const Clients: React.FC = () => {
                     })}
                 </div>
 
-                {/* ... Desktop Table View ... */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-medium sticky top-0 z-10 shadow-sm">
@@ -292,7 +277,6 @@ export const Clients: React.FC = () => {
                                 <th className="p-3 pb-1 text-right text-xs uppercase tracking-wider font-bold">Valor Total</th>
                                 <th className="p-3 pb-1 text-center text-xs uppercase tracking-wider font-bold">Ações</th>
                             </tr>
-                            {/* Filter Row */}
                             <tr className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                                 <th className="p-2"><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none font-normal bg-white dark:bg-slate-800 dark:text-white" value={filters.name} onChange={e => setFilters({...filters, name: e.target.value})}/></th>
                                 <th className="p-2"><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none font-normal bg-white dark:bg-slate-800 dark:text-white" value={filters.unit} onChange={e => setFilters({...filters, unit: e.target.value})}/></th>
@@ -307,4 +291,285 @@ export const Clients: React.FC = () => {
                             {filteredClients.map(client => {
                                 const daysInactive = client.lastContact ? Math.floor((new Date().getTime() - new Date(client.lastContact).getTime()) / (1000 * 3600 * 24)) : 999;
                                 return (
-                                <tr key={client.id} className="hover:bg-
+                                <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition cursor-pointer" onClick={() => handleOpenClient(client)}>
+                                    <td className="p-3">
+                                        <div className="font-bold text-slate-900 dark:text-white text-sm">{client.name}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">{client.contractId || '-'}</div>
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="text-xs text-slate-700 dark:text-slate-300">{client.unit || client.address || '-'}</div>
+                                    </td>
+                                    <td className="p-3 text-center text-xs text-slate-600 dark:text-slate-300">
+                                        {client.parkingSpots || '-'}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${client.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : client.status === 'Churn Risk' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                            {client.status === 'Active' ? 'Ativo' : client.status === 'Churn Risk' ? 'Risco' : 'Inativo'}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <div className={`text-xs ${daysInactive > 30 ? 'text-red-500 font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
+                                            {client.lastContact ? new Date(client.lastContact).toLocaleDateString() : '-'}
+                                        </div>
+                                        {daysInactive > 30 && <div className="text-[9px] text-red-400">{daysInactive} dias</div>}
+                                    </td>
+                                    <td className="p-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300">
+                                        {client.totalTablePrice ? `R$ ${client.totalTablePrice.toLocaleString()}` : client.ltv ? `R$ ${client.ltv.toLocaleString()}` : '-'}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button onClick={(e) => handleEditClick(e, client)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-500 dark:text-slate-400" title="Editar">
+                                                <Edit size={14}/>
+                                            </button>
+                                            <button onClick={(e) => handleWhatsAppClick(e, client)} className="p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded text-green-600 dark:text-green-400" title="WhatsApp">
+                                                <MessageCircle size={14}/>
+                                            </button>
+                                            <button onClick={(e) => handleDeleteClick(e, client)} className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 hover:text-red-600" title="Excluir">
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* NEW CLIENT MODAL */}
+            {isNewClientModalOpen && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Novo Cliente</h2>
+                            <button onClick={() => setIsNewClientModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={20}/></button>
+                        </div>
+                        <form onSubmit={handleCreateClient} className="p-6 space-y-4 overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Empresa / Nome</label><input required type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newClientForm.name} onChange={e => setNewClientForm({...newClientForm, name: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">CNPJ</label><input type="text" className={`w-full border rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${cnpjError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'}`} value={newClientForm.cnpj} onChange={handleCnpjChange}/>{cnpjError && <p className="text-red-500 text-xs mt-1">{cnpjError}</p>}</div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Contato Principal</label><input required type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newClientForm.contactPerson} onChange={e => setNewClientForm({...newClientForm, contactPerson: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label><input type="email" className={`w-full border rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${emailError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'}`} value={newClientForm.email} onChange={handleEmailChange}/>{emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}</div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Telefone</label><input type="text" className={`w-full border rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${phoneError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'}`} value={newClientForm.phone} onChange={handlePhoneChange}/>{phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}</div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor Contrato (Mensal)</label><input type="number" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newClientForm.ltv} onChange={e => setNewClientForm({...newClientForm, ltv: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">CEP</label><div className="relative"><input type="text" className={`w-full border rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white ${cepError ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'}`} value={newClientForm.cep} onChange={handleCepChange} placeholder="00000-000" maxLength={9}/>{isLoadingCep && <div className="absolute right-3 top-3"><Loader2 className="animate-spin text-blue-500" size={16}/></div>}</div>{cepError && <p className="text-red-500 text-xs mt-1">{cepError}</p>}</div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Endereço</label><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newClientForm.address} onChange={e => setNewClientForm({...newClientForm, address: e.target.value})}/></div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Produtos Contratados</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {products.filter(p => p.active).map(prod => (
+                                        <div 
+                                            key={prod.id} 
+                                            className={`p-2 rounded border cursor-pointer text-xs font-medium transition ${newClientForm.contractedProducts.includes(prod.name) ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400'}`}
+                                            onClick={() => toggleProductInForm(prod.name, false)}
+                                        >
+                                            {prod.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <CustomFieldRenderer 
+                                fields={customFields} 
+                                module="clients" 
+                                values={newClientForm.metadata} 
+                                onChange={(k, v) => setNewClientForm(prev => ({ ...prev, metadata: { ...prev.metadata, [k]: v } }))} 
+                                className="pt-2 border-t border-slate-100 dark:border-slate-700"
+                            />
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <button type="button" onClick={() => setIsNewClientModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
+                                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                                    <CheckCircle size={18}/> Salvar Cliente
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT CLIENT MODAL */}
+            {isEditModalOpen && clientToEdit && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Editar Cliente</h2>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"><X size={20}/></button>
+                        </div>
+                        <form onSubmit={handleSaveEdit} className="p-6 space-y-4 overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome</label><input required type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Documento</label><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.document} onChange={e => setEditForm({...editForm, document: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label><input type="email" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Telefone</label><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Valor Contrato</label><input type="number" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.value} onChange={e => setEditForm({...editForm, value: Number(e.target.value)})}/></div>
+                                <div><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Status</label><select className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value as any})}><option value="Active">Ativo</option><option value="Inactive">Inativo</option><option value="Churn Risk">Risco de Churn</option></select></div>
+                                <div className="col-span-1 md:col-span-2"><label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Endereço</label><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})}/></div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Produtos</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {products.filter(p => p.active).map(prod => (
+                                        <div 
+                                            key={prod.id} 
+                                            className={`p-2 rounded border cursor-pointer text-xs font-medium transition ${editForm.contractedProducts.includes(prod.name) ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400'}`}
+                                            onClick={() => toggleProductInForm(prod.name, true)}
+                                        >
+                                            {prod.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <CustomFieldRenderer 
+                                fields={customFields} 
+                                module="clients" 
+                                values={editForm.metadata} 
+                                onChange={(k, v) => setEditForm(prev => ({ ...prev, metadata: { ...prev.metadata, [k]: v } }))} 
+                                className="pt-2 border-t border-slate-100 dark:border-slate-700"
+                            />
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
+                                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                                    <Save size={18}/> Salvar Alterações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* DELETE MODAL */}
+            {isDeleteModalOpen && clientToDelete && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-900/30 flex justify-between items-start">
+                            <div className="flex gap-4">
+                                <div className="bg-red-100 dark:bg-red-900 p-3 rounded-full text-red-600 dark:text-red-300 h-fit">
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Excluir Cliente</h2>
+                                    <p className="text-sm text-red-700 dark:text-red-300 font-medium mt-1">Esta ação é irreversível.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsDeleteModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition"><X size={20}/></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-slate-600 dark:text-slate-300 text-sm">
+                                Você está prestes a excluir o cliente <strong>{clientToDelete.name}</strong>. Todos os dados associados (faturas, contratos, leads) podem ser afetados.
+                            </p>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-400 uppercase mb-1">
+                                    Justificativa da Exclusão <span className="text-red-500">*</span>
+                                </label>
+                                <textarea className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 focus:ring-2 focus:ring-red-500 outline-none text-sm h-24 resize-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Digite o motivo (mínimo 5 caracteres)..." value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} />
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-right">{deleteReason.length}/5 caracteres</p>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Cancelar</button>
+                            <button onClick={handleConfirmDelete} disabled={deleteReason.length < 5} className="px-6 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <Trash2 size={16}/> Confirmar Exclusão
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* INACTIVE ALERT MODAL */}
+            {showInactiveModal && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in border-t-4 border-yellow-500">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start bg-yellow-50 dark:bg-yellow-900/30">
+                            <div className="flex gap-4">
+                                <div className="bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full text-yellow-600 dark:text-yellow-200 h-fit">
+                                    <Clock size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Alerta de Inatividade</h2>
+                                    <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium mt-1">Existem {inactiveClients.length} clientes ativos sem contato há mais de 30 dias.</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowInactiveModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 rounded-full transition"><X size={20}/></button>
+                        </div>
+                        <div className="p-6 max-h-[50vh] overflow-y-auto bg-white dark:bg-slate-800">
+                            <div className="space-y-3">
+                                {inactiveClients.map(client => {
+                                    const days = Math.floor((new Date().getTime() - new Date(client.lastContact || client.since).getTime()) / (1000 * 3600 * 24));
+                                    return (
+                                        <div key={client.id} className="flex items-center justify-between p-4 rounded-lg border border-yellow-100 dark:border-yellow-900/50 bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition cursor-pointer" onClick={() => handleViewClientFromAlert(client)}>
+                                            <div>
+                                                <p className="font-bold text-slate-800 dark:text-slate-200">{client.name}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">{client.contactPerson} • {client.phone}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="flex items-center gap-1 text-xs font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-800">
+                                                    <Clock size={12}/> {days} dias
+                                                </span>
+                                                <ChevronRight size={16} className="text-slate-400"/>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button onClick={() => setShowInactiveModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* WHATSAPP MODAL */}
+            {showWhatsAppModal && clientForWhatsApp && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000] p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <MessageCircle size={20} className="text-green-600"/> Enviar WhatsApp
+                            </h2>
+                            <button onClick={() => setShowWhatsAppModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"><X size={20}/></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">Para: <strong>{clientForWhatsApp.name}</strong> ({clientForWhatsApp.phone})</p>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Mensagem</label>
+                                <textarea className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 h-32 resize-none focus:ring-2 focus:ring-green-500 outline-none text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} />
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                {whatsappTemplates.map((tmpl, idx) => (
+                                    <button key={idx} onClick={() => { const text = tmpl.text.replace('[Nome]', clientForWhatsApp.contactPerson.split(' ')[0]).replace('[Empresa]', clientForWhatsApp.name); setWhatsAppMessage(text); }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap border border-slate-200 dark:border-slate-600 transition">
+                                        {tmpl.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button onClick={() => setShowWhatsAppModal(false)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition">Cancelar</button>
+                            <button onClick={handleSendWhatsApp} className="px-6 py-2 rounded-lg bg-[#25D366] text-white font-bold hover:bg-[#128C7E] shadow-md transition flex items-center gap-2">
+                                <Send size={16}/> Enviar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Client 360 Modal */}
+            {selectedClient && (
+                <Client360 
+                    client={selectedClient}
+                    leads={leads}
+                    tickets={tickets}
+                    invoices={invoices}
+                    onClose={handleCloseClient}
+                />
+            )}
+        </div>
+    );
+};
