@@ -1,5 +1,6 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback, useMemo } from 'react';
-import { Lead, Ticket, Issue, Invoice, LeadStatus, InvoiceStatus, Client, Activity, AuditLog, User, Note, Proposal, Notification, Product, ClientDocument, Campaign, MarketingContent, Workflow, PortalSettings, Project, ProjectTask, TriggerType, TicketStatus, ToastMessage, ProspectingHistoryItem, Competitor, MarketTrend, CustomFieldDefinition, WebhookConfig, InboxConversation } from '../types';
+import { Lead, Ticket, Issue, Invoice, LeadStatus, InvoiceStatus, Client, Activity, AuditLog, User, Note, Proposal, SystemNotification, Product, ClientDocument, Campaign, MarketingContent, Workflow, PortalSettings, Project, ProjectTask, TriggerType, TicketStatus, ToastMessage, ProspectingHistoryItem, Competitor, MarketTrend, CustomFieldDefinition, WebhookConfig, InboxConversation } from '../types';
 import { MOCK_LEADS, MOCK_TICKETS, MOCK_ISSUES, MOCK_INVOICES, MOCK_CLIENTS, MOCK_LOGS, MOCK_PROPOSALS, MOCK_PRODUCTS, MOCK_DOCUMENTS, MOCK_CAMPAIGNS, MOCK_CONTENTS, MOCK_WORKFLOWS, MOCK_PROJECTS, MOCK_COMPETITORS, MOCK_MARKET_TRENDS, MOCK_CUSTOM_FIELDS, MOCK_WEBHOOKS, MOCK_CONVERSATIONS } from '../constants';
 import { getSupabase } from '../services/supabaseClient';
 import { useAuth } from './AuthContext'; 
@@ -18,7 +19,7 @@ interface DataContextType {
   activities: Activity[];
   logs: AuditLog[];
   proposals: Proposal[];
-  notifications: Notification[];
+  notifications: SystemNotification[];
   products: Product[];
   clientDocuments: ClientDocument[];
   campaigns: Campaign[];
@@ -157,7 +158,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [clients, setClients] = useState<Client[]>(() => loadInitialState('clients', MOCK_CLIENTS));
   const [logs, setLogs] = useState<AuditLog[]>(() => loadInitialState('logs', MOCK_LOGS));
   const [proposals, setProposals] = useState<Proposal[]>(() => loadInitialState('proposals', MOCK_PROPOSALS));
-  const [notifications, setNotifications] = useState<Notification[]>(() => loadInitialState('notifications', []));
+  const [notifications, setNotifications] = useState<SystemNotification[]>(() => loadInitialState('notifications', []));
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [products, setProducts] = useState<Product[]>(() => loadInitialState('products', MOCK_PRODUCTS));
   const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>(() => loadInitialState('client_documents', MOCK_DOCUMENTS));
@@ -233,7 +234,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const addSystemNotification = useCallback((title: string, message: string, type: 'info' | 'warning' | 'success' | 'alert', relatedTo?: string) => {
-      const newNotif: Notification = { id: `NOTIF-${Date.now()}`, title, message, type, timestamp: new Date().toISOString(), read: false, relatedTo, organizationId: currentOrganization?.id };
+      const newNotif: SystemNotification = { id: `NOTIF-${Date.now()}`, title, message, type, timestamp: new Date().toISOString(), read: false, relatedTo, organizationId: currentOrganization?.id };
       setNotifications(prev => [newNotif, ...prev]);
       dbUpsert('notifications', newNotif);
       showToast(title, message, type);

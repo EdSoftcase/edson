@@ -339,7 +339,7 @@ export interface AuditLog {
   organizationId?: string;
 }
 
-export interface Notification {
+export interface SystemNotification {
     id: string;
     title: string;
     message: string;
