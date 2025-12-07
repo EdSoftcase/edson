@@ -1,5 +1,3 @@
-
-/* ... imports ... */
 import React, { useEffect, useState, useMemo } from 'react';
 import { DollarSign, TrendingUp, Users, AlertCircle, RefreshCw, CheckCircle, Circle, Clock, ArrowRight, X, Bell, Zap, Phone, PartyPopper, Briefcase, Eye, EyeOff, Trophy } from 'lucide-react';
 import { KPICard, SectionTitle } from '../components/Widgets';
@@ -311,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                             </div>
                             <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 whitespace-nowrap">{new Date(act.dueDate).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit'})}</span>
                         </div>
-                    ))}
+                    )))}
                 </div>
                 <button 
                     onClick={() => onNavigate('commercial')}
