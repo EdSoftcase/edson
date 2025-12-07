@@ -49,7 +49,6 @@ const SUPER_ADMIN_EMAILS = ['superadmin@nexus.com', 'edson.softcase@gmail.com'];
 export const Settings: React.FC = () => {
   const { currentUser, currentOrganization, updateUser, usersList, addTeamMember, adminDeleteUser, adminUpdateUser, permissionMatrix, updatePermission, sendRecoveryInvite } = useAuth();
   
-  // FIXED: Destructure refreshData and remove duplicate syncLocalToCloud definition
   const { leads, clients, tickets, invoices, issues, syncLocalToCloud, isSyncing, refreshData, products, addProduct, updateProduct, removeProduct, activities, portalSettings, updatePortalSettings, campaigns, workflows, marketingContents, projects, notifications, pushEnabled, togglePushNotifications, competitors, marketTrends, prospectingHistory, disqualifiedProspects, customFields, addCustomField, deleteCustomField, webhooks, addWebhook, deleteWebhook, updateWebhook, restoreDefaults } = useData();
   
   const { data: logs, isLoading: isLogsLoading, isError: isLogsError } = useAuditLogs();
@@ -298,7 +297,8 @@ export const Settings: React.FC = () => {
   
   const handleSaveProduct = (e: React.FormEvent) => { e.preventDefault(); if (editingProductId) { updateProduct(currentUser!, { ...newProduct, id: editingProductId } as Product); } else { addProduct(currentUser!, { ...newProduct, id: `PROD-${Date.now()}` } as Product); } setIsProductModalOpen(false); setEditingProductId(null); setNewProduct({ active: true, category: 'Subscription' }); };
   const handleDeleteProduct = () => { if (productToDelete) { removeProduct(currentUser!, productToDelete.id, productDeleteReason); setIsDeleteProductModalOpen(false); setProductToDelete(null); } };
-  
+  const handleEditProduct = (prod: Product) => { setEditingProductId(prod.id); setNewProduct(prod); setIsProductModalOpen(true); };
+
   const handleSavePortal = () => { updatePortalSettings(currentUser!, portalForm); alert('Configurações do portal salvas!'); };
   
   const toggleCalendar = (type: 'google' | 'outlook') => { setCalendarSync(prev => { const newState = { ...prev, [type]: !prev[type] }; localStorage.setItem('nexus_calendar_sync', JSON.stringify(newState)); return newState; }); };
@@ -434,6 +434,219 @@ export const Settings: React.FC = () => {
                             </div>
                             <button onClick={togglePushNotifications} className={`px-4 py-2 rounded-lg text-xs font-bold transition ${pushEnabled ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{pushEnabled ? 'Desativar' : 'Ativar'}</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TEAM TAB */}
+            {activeTab === 'team' && (
+                <div>
+                    <div className="flex justify-between items-center mb-6">
+                        <SectionTitle title="Membros da Equipe" subtitle="Gerencie quem tem acesso à organização." />
+                        <button onClick={() => setIsTeamModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 shadow-sm"><Plus size={18}/> Convidar Membro</button>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-xs">
+                                <tr>
+                                    <th className="p-4">Nome</th>
+                                    <th className="p-4">Email</th>
+                                    <th className="p-4">Função</th>
+                                    <th className="p-4 text-center">Status</th>
+                                    <th className="p-4 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {usersList.map(user => (
+                                    <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                        <td className="p-4 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                {user.avatar?.startsWith('http') ? <img src={user.avatar} className="w-full h-full rounded-full object-cover"/> : user.avatar}
+                                            </div>
+                                            <span className="font-bold text-slate-800 dark:text-white">{user.name}</span>
+                                        </td>
+                                        <td className="p-4 text-slate-600 dark:text-slate-300">{user.email}</td>
+                                        <td className="p-4"><Badge color="blue">{ROLE_NAMES[user.role] || user.role}</Badge></td>
+                                        <td className="p-4 text-center"><Badge color="green">Ativo</Badge></td>
+                                        <td className="p-4 text-center">
+                                            {user.id !== currentUser?.id && (
+                                                <button 
+                                                    onClick={() => { setMemberToDelete(user); setIsDeleteMemberModalOpen(true); }}
+                                                    className="p-2 text-slate-400 hover:text-red-500 transition"
+                                                >
+                                                    <Trash2 size={16}/>
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* PERMISSIONS TAB */}
+            {activeTab === 'permissions' && (
+                <div>
+                    <SectionTitle title="Matriz de Permissões" subtitle="Controle granular de acesso por função (RBAC)." />
+                    
+                    <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+                        {Object.keys(ROLE_NAMES).filter(r => r !== 'client').map((role) => (
+                            <button
+                                key={role}
+                                onClick={() => setSelectedRoleForPerms(role as Role)}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition ${selectedRoleForPerms === role ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900 shadow-md' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                            >
+                                {ROLE_NAMES[role]}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-xs">
+                                <tr>
+                                    <th className="p-4">Módulo</th>
+                                    <th className="p-4 text-center">Visualizar</th>
+                                    <th className="p-4 text-center">Criar</th>
+                                    <th className="p-4 text-center">Editar</th>
+                                    <th className="p-4 text-center">Excluir</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {Object.keys(MODULE_NAMES).map(moduleKey => {
+                                    const perms = permissionMatrix[selectedRoleForPerms]?.[moduleKey] || { view: false, create: false, edit: false, delete: false };
+                                    return (
+                                        <tr key={moduleKey} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="p-4 font-bold text-slate-800 dark:text-white">{MODULE_NAMES[moduleKey]}</td>
+                                            {['view', 'create', 'edit', 'delete'].map(action => (
+                                                <td key={action} className="p-4 text-center">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                        checked={perms[action as PermissionAction]}
+                                                        onChange={(e) => updatePermission(selectedRoleForPerms, moduleKey, action as PermissionAction, e.target.checked)}
+                                                        disabled={selectedRoleForPerms === 'admin'} // Admin always has full access
+                                                    />
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* AUDIT TAB */}
+            {activeTab === 'audit' && (
+                <div>
+                    <SectionTitle title="Logs de Auditoria" subtitle="Rastreabilidade de todas as ações no sistema." />
+                    <div className="mb-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={18}/>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar nos logs..." 
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                value={logSearch}
+                                onChange={(e) => setLogSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm flex flex-col h-[500px]">
+                        <div className="overflow-y-auto flex-1 custom-scrollbar">
+                            <table className="w-full text-left text-xs md:text-sm">
+                                <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-xs sticky top-0 z-10">
+                                    <tr>
+                                        <th className="p-3">Data/Hora</th>
+                                        <th className="p-3">Usuário</th>
+                                        <th className="p-3">Ação</th>
+                                        <th className="p-3">Módulo</th>
+                                        <th className="p-3">Detalhes</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {logs?.filter(l => JSON.stringify(l).toLowerCase().includes(logSearch.toLowerCase())).map(log => (
+                                        <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="p-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
+                                            <td className="p-3 font-bold text-slate-700 dark:text-slate-200">{log.userName}</td>
+                                            <td className="p-3"><Badge>{log.action}</Badge></td>
+                                            <td className="p-3 text-slate-600 dark:text-slate-300">{log.module}</td>
+                                            <td className="p-3 text-slate-500 dark:text-slate-400 truncate max-w-xs" title={log.details}>{log.details}</td>
+                                        </tr>
+                                    ))}
+                                    {(!logs || logs.length === 0) && (
+                                        <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum log registrado.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PRODUCTS TAB */}
+            {activeTab === 'products' && (
+                <div>
+                    <div className="flex justify-between items-center mb-6">
+                        <SectionTitle title="Catálogo de Produtos" subtitle="Gerencie serviços e itens faturáveis." />
+                        <button onClick={() => { setIsProductModalOpen(true); setEditingProductId(null); setNewProduct({ active: true, category: 'Subscription' }); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-sm transition"><Plus size={18}/> Novo Produto</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {products.map(prod => (
+                            <div key={prod.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:shadow-md transition group relative">
+                                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                    <button onClick={() => handleEditProduct(prod)} className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600"><Edit2 size={14}/></button>
+                                    <button onClick={() => { setProductToDelete(prod); setIsDeleteProductModalOpen(true); }} className="p-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600"><Trash2 size={14}/></button>
+                                </div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <Badge color={prod.category === 'Subscription' ? 'blue' : prod.category === 'Service' ? 'purple' : 'green'}>{prod.category}</Badge>
+                                    {!prod.active && <span className="text-xs font-bold text-red-500">Inativo</span>}
+                                </div>
+                                <h3 className="font-bold text-lg text-slate-900 dark:text-white">{prod.name}</h3>
+                                <p className="text-2xl font-bold text-slate-700 dark:text-slate-200 my-2">R$ {prod.price.toLocaleString()}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{prod.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* PORTAL CONFIG TAB */}
+            {activeTab === 'portal_config' && (
+                <div className="max-w-4xl">
+                    <SectionTitle title="Personalização do Portal" subtitle="Configure a aparência e funcionalidades da área do cliente (White-label)." />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h3 className="font-bold text-slate-800 dark:text-white mb-4">Aparência & Marca</h3>
+                            <div className="space-y-4">
+                                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome do Portal</label><input type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none" value={portalForm.portalName} onChange={e => setPortalForm({...portalForm, portalName: e.target.value})} /></div>
+                                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cor Primária (Hex)</label><div className="flex gap-2"><div className="w-10 h-10 rounded-lg border shadow-sm shrink-0" style={{backgroundColor: portalForm.primaryColor}}></div><input type="text" className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none font-mono" value={portalForm.primaryColor} onChange={e => setPortalForm({...portalForm, primaryColor: e.target.value})} /></div></div>
+                                <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mensagem de Boas-vindas</label><textarea className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white outline-none h-24 resize-none" value={portalForm.welcomeMessage} onChange={e => setPortalForm({...portalForm, welcomeMessage: e.target.value})} /></div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <h3 className="font-bold text-slate-800 dark:text-white mb-4">Funcionalidades</h3>
+                                <div className="space-y-3">
+                                    <label className="flex items-center gap-3 p-3 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" checked={portalForm.allowInvoiceDownload} onChange={e => setPortalForm({...portalForm, allowInvoiceDownload: e.target.checked})} /><span className="text-sm font-medium text-slate-700 dark:text-slate-300">Permitir Download de Faturas</span></label>
+                                    <label className="flex items-center gap-3 p-3 border border-slate-100 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" checked={portalForm.allowTicketCreation} onChange={e => setPortalForm({...portalForm, allowTicketCreation: e.target.checked})} /><span className="text-sm font-medium text-slate-700 dark:text-slate-300">Permitir Abertura de Chamados</span></label>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Visualize como o cliente verá o portal.</p>
+                                <a href="/portal" target="_blank" className="inline-flex items-center gap-2 bg-slate-900 dark:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold hover:opacity-90 transition"><ExternalLink size={16}/> Pré-visualizar Portal</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-6 flex justify-end">
+                        <button onClick={handleSavePortal} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md transition flex items-center gap-2"><Save size={18}/> Salvar Configurações</button>
                     </div>
                 </div>
             )}
@@ -813,8 +1026,120 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* --- MODALS (Keeping structure but omitting detail for brevity as they were correct) --- */}
-      {/* ... Team, Product, SQL Modals ... */}
+      {/* --- MODALS --- */}
+      
+      {/* ADD MEMBER MODAL */}
+      {isTeamModalOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">Adicionar Membro</h3>
+                      <button onClick={() => setIsTeamModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={20}/></button>
+                  </div>
+                  <form onSubmit={handleAddMember} className="p-6 space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome</label>
+                          <input required type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Email</label>
+                          <input required type="email" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.email} onChange={e => setNewMember({...newMember, email: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Função</label>
+                          <select className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value as any})}>
+                              {Object.keys(ROLE_NAMES).filter(r => r !== 'client').map(r => <option key={r} value={r}>{ROLE_NAMES[r]}</option>)}
+                          </select>
+                      </div>
+                      <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Enviar Convite</button>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* DELETE MEMBER MODAL */}
+      {isDeleteMemberModalOpen && memberToDelete && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                  <div className="p-6 text-center">
+                      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-400">
+                          <Trash2 size={32}/>
+                      </div>
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Remover Membro?</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Tem certeza que deseja remover <strong>{memberToDelete.name}</strong> da equipe?</p>
+                      <div className="flex gap-3">
+                          <button onClick={() => setIsDeleteMemberModalOpen(false)} className="flex-1 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
+                          <button onClick={handleDeleteMember} className="flex-1 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-md">Remover</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* PRODUCT MODAL */}
+      {isProductModalOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{editingProductId ? 'Editar Produto' : 'Novo Produto'}</h3>
+                      <button onClick={() => setIsProductModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={20}/></button>
+                  </div>
+                  <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Produto</label>
+                          <input required type="text" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newProduct.name || ''} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Descrição</label>
+                          <textarea className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500 h-24 resize-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newProduct.description || ''} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Preço (R$)</label>
+                              <input required type="number" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Categoria</label>
+                              <select className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={newProduct.category || 'Subscription'} onChange={e => setNewProduct({...newProduct, category: e.target.value as any})}>
+                                  <option value="Subscription">Assinatura</option>
+                                  <option value="Service">Serviço</option>
+                                  <option value="Product">Produto Físico</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <input type="checkbox" id="active-prod" checked={newProduct.active} onChange={e => setNewProduct({...newProduct, active: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                          <label htmlFor="active-prod" className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">Produto Ativo</label>
+                      </div>
+                      <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-500/20">Salvar Produto</button>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* DELETE PRODUCT MODAL */}
+      {isDeleteProductModalOpen && productToDelete && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+                  <div className="p-6 border-b border-red-100 dark:border-red-900 bg-red-50 dark:bg-red-900/30">
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2"><AlertTriangle className="text-red-600 dark:text-red-400"/> Excluir Produto</h3>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <p className="text-sm text-slate-600 dark:text-slate-300">Você está prestes a excluir o produto <strong>{productToDelete.name}</strong>. Esta ação requer uma justificativa.</p>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Justificativa</label>
+                          <textarea className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Motivo da exclusão..." value={productDeleteReason} onChange={e => setProductDeleteReason(e.target.value)} />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                          <button onClick={() => setIsDeleteProductModalOpen(false)} className="flex-1 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700">Cancelar</button>
+                          <button onClick={handleDeleteProduct} disabled={productDeleteReason.length < 5} className="flex-1 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-md disabled:opacity-50">Excluir</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* SQL SCHEMA MODAL */}
       {showSqlModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-fade-in">
               <div className="bg-slate-900 w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden animate-scale-in border border-slate-700 flex flex-col max-h-[85vh]">
@@ -822,7 +1147,115 @@ export const Settings: React.FC = () => {
                       <h3 className="font-bold text-white flex items-center gap-2"><Database size={18} className="text-emerald-400"/> Schema SQL</h3>
                       <button onClick={() => setShowSqlModal(false)} className="text-slate-400 hover:text-white"><X size={20}/></button>
                   </div>
-                  <div className="p-0 overflow-auto bg-[#0d1117] flex-1 custom-scrollbar"><pre className="text-xs font-mono text-emerald-400 p-6 leading-relaxed">{`-- SQL SCHEMA --\ncreate table public.organizations...`}</pre></div>
+                  <div className="p-0 overflow-auto bg-[#0d1117] flex-1 custom-scrollbar">
+                      <pre className="text-xs font-mono text-emerald-400 p-6 leading-relaxed select-text">
+{`-- SQL SCHEMA FOR NEXUS CRM (Supabase) --
+
+-- Enable UUID extension
+create extension if not exists "uuid-ossp";
+
+-- 1. Organizations (Tenants)
+create table public.organizations (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  slug text unique not null,
+  plan text default 'Standard',
+  subscription_status text default 'active',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 2. Profiles (Users)
+create table public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  full_name text,
+  email text,
+  role text default 'user',
+  avatar text,
+  organization_id uuid references public.organizations(id),
+  related_client_id text, -- Links to clients table for portal access
+  xp integer default 0,
+  level integer default 1,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3. Clients
+create table public.clients (
+  id text primary key, -- Using text ID for flexibility (C-123)
+  name text not null,
+  contact_person text,
+  email text,
+  phone text,
+  document text, -- CNPJ/CPF
+  segment text,
+  status text default 'Active',
+  ltv numeric default 0,
+  health_score integer default 100,
+  nps integer default 0,
+  organization_id uuid references public.organizations(id),
+  contracted_products text[], -- Array of strings
+  address text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 4. Leads
+create table public.leads (
+  id text primary key,
+  name text not null,
+  company text,
+  email text,
+  phone text,
+  value numeric default 0,
+  status text default 'Novo',
+  source text,
+  probability integer default 0,
+  organization_id uuid references public.organizations(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 5. Activities
+create table public.activities (
+  id text primary key,
+  title text not null,
+  type text,
+  due_date timestamp with time zone,
+  completed boolean default false,
+  related_to text,
+  assignee uuid references public.profiles(id),
+  description text,
+  organization_id uuid references public.organizations(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 6. Tickets
+create table public.tickets (
+  id text primary key,
+  subject text not null,
+  description text,
+  customer text,
+  priority text,
+  status text default 'Aberto',
+  channel text,
+  organization_id uuid references public.organizations(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS (Row Level Security) for multi-tenancy
+alter table public.profiles enable row level security;
+alter table public.clients enable row level security;
+alter table public.leads enable row level security;
+alter table public.activities enable row level security;
+alter table public.tickets enable row level security;
+
+-- Policies (Example for Clients)
+create policy "Users can view clients in their org"
+  on public.clients for select
+  using (organization_id in (
+    select organization_id from public.profiles
+    where id = auth.uid()
+  ));
+`}
+                      </pre>
+                  </div>
               </div>
           </div>
       )}
